@@ -22,7 +22,7 @@
  *  SOFTWARE.
  */
 
-import Foundation
+import UIKit
 
 public enum DetectionType {
     case tag(Tag)
@@ -52,14 +52,28 @@ extension AttributedTextProtocol {
     
     fileprivate func makeAttributedString(getAttributes: (Style)-> [AttributedStringKey: Any]) -> NSAttributedString {
         let attributedString = NSMutableAttributedString(string: string, attributes: getAttributes(baseStyle))
-        
+
         let sortedDetections = detections.sorted {
             $0.level < $1.level
         }
         
+        var offset = 0
         for d in sortedDetections {
             let attrs = getAttributes(d.style)
-            if attrs.count > 0 {
+            guard attrs.count != 0 else { continue }
+            
+            // means no NSAttachments yet added
+            if let attachment = attrs[AttributedStringKey.attachment] as? NSTextAttachment {
+                let nsrange = NSRange(d.range, in: string)
+                
+                let attachmentAttribute = NSAttributedString(attachment: attachment)
+                attributedString.insert(attachmentAttribute, at: nsrange.location)
+                offset += 1
+            } else if offset != 0 {
+                let range = NSRange(d.range, in: string + String(repeating: " ", count: offset))
+                
+                attributedString.addAttributes(attrs, range: range)
+            } else {
                 attributedString.addAttributes(attrs, range: NSRange(d.range, in: string))
             }
         }
@@ -169,10 +183,28 @@ extension String: AttributedTextProtocol {
         
         var ds: [Detection] = []
         
+        var offset: String.IndexDistance = 0
         tagsInfo.forEach { t in
-            
             if let style = (tags.first { style in style.name.lowercased() == t.tag.name.lowercased() }) {
-                ds.append(Detection(type: .tag(t.tag), style: tuner(style, t.tag), range: t.range, level: t.level))
+                let detection: Detection
+                
+                if offset != 0 {
+                    let largeString = string + String(repeating: " ", count: offset)
+                    
+                    let lowerBound = largeString.index(t.range.lowerBound, offsetBy: offset)
+                    let upperBound = largeString.index(t.range.upperBound, offsetBy: offset)
+                    
+                    let newRange = Range<String.Index>.init(uncheckedBounds: (lower: lowerBound, upper: upperBound))
+                    
+                    detection = Detection(type: .tag(t.tag), style: tuner(style, t.tag), range: newRange, level: t.level)
+                } else {
+                    detection = Detection(type: .tag(t.tag), style: tuner(style, t.tag), range: t.range, level: t.level)
+                }
+                ds.append(detection)
+                
+                if detection.style.typedAttributes[.normal]?[AttributedStringKey.attachment] as? NSTextAttachment != nil {
+                    offset += 1
+                }
             } else {
                 ds.append(Detection(type: .tag(t.tag), style: Style(), range: t.range, level: t.level))
             }
