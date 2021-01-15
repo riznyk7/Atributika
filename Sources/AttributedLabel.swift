@@ -179,9 +179,19 @@ import UIKit
             let highlightableDetections = attributedText.detections.filter { $0.style.typedAttributes[.highlighted] != nil }
             
             highlightableDetections.forEach { detection in
-                let nsrange = NSRange(detection.range, in: attributedText.string)
+                // in case if there were NSStringAttachment limit range
+                let range: Range<String.Index>
+                if let maxUpperBound = attributedText.string.range(of: attributedText.string)?.upperBound, maxUpperBound.encodedOffset < detection.range.upperBound.encodedOffset {
+                    
+                    range = Range<String.Index>.init(uncheckedBounds: (lower: detection.range.lowerBound, upper: maxUpperBound))
+                    
+                } else {
+                    range = detection.range
+                }
+                
+                let nsrange = NSRange(range, in: attributedText.string)
                 textView.layoutManager.enumerateEnclosingRects(forGlyphRange: nsrange, withinSelectedGlyphRange: NSRange(location: NSNotFound, length: 0), in: textView.textContainer, using: { (rect, stop) in
-                    self.addDetectionAreaButton(frame: rect, detection: detection, text: String(attributedText.string[detection.range]))
+                    self.addDetectionAreaButton(frame: rect, detection: detection, text: String(attributedText.string[range]))
                 })
             }
         }
