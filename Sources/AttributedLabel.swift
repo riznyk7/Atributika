@@ -180,18 +180,15 @@ import UIKit
             
             highlightableDetections.forEach { detection in
                 // in case if there were NSStringAttachment limit range
-                let range: Range<String.Index>
-                if let maxUpperBound = attributedText.string.range(of: attributedText.string)?.upperBound, maxUpperBound.encodedOffset < detection.range.upperBound.encodedOffset {
-                    
-                    range = Range<String.Index>.init(uncheckedBounds: (lower: detection.range.lowerBound, upper: maxUpperBound))
-                    
-                } else {
-                    range = detection.range
+                var textWithSpaces = attributedText.string
+                
+                while let maxUpperBound = textWithSpaces.range(of: textWithSpaces)?.upperBound, maxUpperBound.encodedOffset < detection.range.upperBound.encodedOffset {
+                    textWithSpaces += " "
                 }
                 
-                let nsrange = NSRange(range, in: attributedText.string)
+                let nsrange = NSRange(detection.range, in: textWithSpaces)
                 textView.layoutManager.enumerateEnclosingRects(forGlyphRange: nsrange, withinSelectedGlyphRange: NSRange(location: NSNotFound, length: 0), in: textView.textContainer, using: { (rect, stop) in
-                    self.addDetectionAreaButton(frame: rect, detection: detection, text: String(attributedText.string[range]))
+                    self.addDetectionAreaButton(frame: rect, detection: detection, text: String(textWithSpaces[detection.range]))
                 })
             }
         }
@@ -323,19 +320,17 @@ import UIKit
         if let attributedText = state.attributedText {
             
             if let detection = state.detection {
+                let higlightedAttributedString = NSMutableAttributedString(attributedString: attributedText.attributedString)
+                
                 // in case if there were NSStringAttachment limit range
-                let range: Range<String.Index>
-                if let maxUpperBound = attributedText.string.range(of: attributedText.string)?.upperBound, maxUpperBound.encodedOffset < detection.range.upperBound.encodedOffset {
-                    
-                    range = Range<String.Index>.init(uncheckedBounds: (lower: detection.range.lowerBound, upper: maxUpperBound))
-                    
-                } else {
-                    range = detection.range
+                var textWithSpaces = higlightedAttributedString.string
+                
+                while let maxUpperBound = textWithSpaces.range(of: textWithSpaces)?.upperBound, maxUpperBound.encodedOffset < detection.range.upperBound.encodedOffset {
+                    textWithSpaces += " "
                 }
                 
-                let nsrange = NSRange(range, in: attributedText.string)
+                let nsrange = NSRange(detection.range, in: textWithSpaces)
                 
-                let higlightedAttributedString = NSMutableAttributedString(attributedString: attributedText.attributedString)
                 higlightedAttributedString.addAttributes(detection.style.highlightedAttributes, range: nsrange)
                 updateAttributedTextInTextView(higlightedAttributedString)
             } else {
