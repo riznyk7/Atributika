@@ -323,8 +323,20 @@ import UIKit
         if let attributedText = state.attributedText {
             
             if let detection = state.detection {
+                // in case if there were NSStringAttachment limit range
+                let range: Range<String.Index>
+                if let maxUpperBound = attributedText.string.range(of: attributedText.string)?.upperBound, maxUpperBound.encodedOffset < detection.range.upperBound.encodedOffset {
+                    
+                    range = Range<String.Index>.init(uncheckedBounds: (lower: detection.range.lowerBound, upper: maxUpperBound))
+                    
+                } else {
+                    range = detection.range
+                }
+                
+                let nsrange = NSRange(range, in: attributedText.string)
+                
                 let higlightedAttributedString = NSMutableAttributedString(attributedString: attributedText.attributedString)
-                higlightedAttributedString.addAttributes(detection.style.highlightedAttributes, range: NSRange(detection.range, in: attributedText.string))
+                higlightedAttributedString.addAttributes(detection.style.highlightedAttributes, range: nsrange)
                 updateAttributedTextInTextView(higlightedAttributedString)
             } else {
                 if state.isEnabled {
